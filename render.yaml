@@ -2,9 +2,6 @@ services:
   - type: web
     name: herbal-app
     env: python
-    buildCommand: pip install -r requirements.txt
+    pythonVersion: 3.10.13
+    buildCommand: "pip install -r requirements.txt"
     startCommand: gunicorn app:app
-    runtime: python3.10
-    envVars:
-      - key: PORT
-        value: 10000
