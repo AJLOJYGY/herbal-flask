@@ -2,7 +2,6 @@ usada/
 venv/
 usada.zip
 *.h5
-*.tflite
 __pycache__/
 *.pyc
 .vscode/
