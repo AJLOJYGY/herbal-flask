@@ -1,13 +1,20 @@
 from flask import Flask, render_template, request
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing import image
 import numpy as np
 import os
+from PIL import Image
+import tensorflow as tf
 
 app = Flask(__name__)
-model = load_model('model_herbal.h5')
 IMG_SIZE = 260
 
+# Load TFLite model
+interpreter = tf.lite.Interpreter(model_path="model_herbal.tflite")
+interpreter.allocate_tensors()
+
+input_details = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
+
+# Kelas sesuai label training
 class_names = ['Belimbing_Wuluh', 'Jambu_Biji', 'Katuk', 'Kelor', 'Kemangi', 'Kembang_Sepatu', 'Sirih', 'Sirsak']
 
 @app.route('/', methods=['GET', 'POST'])
@@ -22,19 +29,23 @@ def index():
             filepath = os.path.join('static', 'uploaded_image.jpg')
             file.save(filepath)
 
-            img = image.load_img(filepath, target_size=(IMG_SIZE, IMG_SIZE))
-            img_array = image.img_to_array(img) / 255.
+            img = Image.open(filepath).convert('RGB')
+            img = img.resize((IMG_SIZE, IMG_SIZE))
+            img_array = np.array(img, dtype=np.float32) / 255.0
             img_array = np.expand_dims(img_array, axis=0)
 
-            pred = model.predict(img_array)
-            predicted_class = class_names[np.argmax(pred)]
-            confidence = f"{np.max(pred) * 100:.2f}%"
+            # Predict with TFLite
+            interpreter.set_tensor(input_details[0]['index'], img_array)
+            interpreter.invoke()
+            output = interpreter.get_tensor(output_details[0]['index'])
 
-            prediction = predicted_class
+            pred_class = class_names[np.argmax(output)]
+            confidence = f"{np.max(output) * 100:.2f}%"
+
+            prediction = pred_class
             filename = filepath
 
     return render_template('index.html', prediction=prediction, confidence=confidence, image_path=filename)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
-
